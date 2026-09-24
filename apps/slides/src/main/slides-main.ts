@@ -3937,6 +3937,15 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:set-link', (e, op: SetLinkOp) => {
     const session = sessions.get(e.sender.id)
     if (!session) return null
+    // Renderer-typed URLs are allowlisted before they enter the deck: a
+    // javascript:/file: target must never be saved into the package.
+    // The suite-wide openExternal gate (http/https) plus mailto for deck links.
+    if (
+      op.target?.kind === 'url' &&
+      safeExternalUrl(op.target.url, { allowedProtocols: ['http:', 'https:', 'mailto:'] }) === null
+    ) {
+      return null
+    }
     const r = sessionTxn(session, {
       ops: [{ op: 'setLink', target: { slide: op.slideIndex, el: op.sourceId }, link: op.target }],
     })
